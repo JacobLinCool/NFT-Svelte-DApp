@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-    <title>About</title>
+    <title>About | TOT</title>
 </svelte:head>
 
 <PageTransi>

@@ -1,12 +1,22 @@
+<script lang="ts" context="module">
+    import { init, set_update, get } from "../../contract";
+
+    async function initialize() {
+        if (browser) {
+            await init();
+        }
+    }
+</script>
+
 <script lang="ts">
     import { browser } from "$app/env";
     import PageTransi from "$lib/PageTransi.svelte";
-    import { init, set_update, get } from "../../contract";
 
     const base_url = "https://cloudflare-ipfs.com/ipfs/bafybeiavxdez2mrt76thy4ij4eddozq6aqkme5f3sc2vcqv7766osubste/";
-    $: loaded = false;
+    $: loaded = true;
+    $: safed = false;
     $: symbol = "";
-    $: total = 0;
+    $: total = 3000;
     if (!get.readonly_contract()) {
         set_update(async () => {
             if (get.readonly_contract()) {
@@ -18,21 +28,17 @@
         update();
     }
 
-    async function initialize() {
-        if (browser) {
-            await init();
-        }
-    }
-
     async function update() {
         symbol = await get.readonly_contract().TOKEN_SYMBOL();
         total = parseInt(await get.readonly_contract().TOTAL_SUPPLY());
         loaded = true;
+        safed = true;
     }
+    setTimeout(() => (loaded = false), 50);
 </script>
 
 <svelte:head>
-    <title>Library</title>
+    <title>Library | TOT</title>
 </svelte:head>
 
 {#if loaded}
@@ -41,13 +47,15 @@
             {#each Array.from({ length: total }).map((_, i) => i + 1) as i}
                 <div>
                     <a href="/library/{i}" sveltekit:prefetch>
-                        <h1>{symbol} #{i}</h1>
-                        <img
-                            src="{base_url}{i}.svg"
-                            alt="{symbol} #{i}"
-                            class="mx-auto w-4/5 transition-all hover:scale-95 hover:shadow-lg active:scale-90"
-                            loading="lazy"
-                        />
+                        {#if safed}
+                            <h1>{symbol} #{i}</h1>
+                            <img
+                                src="{base_url}{i}.svg"
+                                alt="{symbol} #{i}"
+                                class="mx-auto w-4/5 transition-all hover:scale-95 hover:shadow-lg active:scale-90"
+                                loading="lazy"
+                            />
+                        {/if}
                     </a>
                 </div>
             {/each}

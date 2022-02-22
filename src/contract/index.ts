@@ -6,8 +6,6 @@ export const config = {
     ADDRESS: "0x3D0b2d43Bc4249357b54ca917BE56D5ABf04d1C0",
     /** The blockchain Network Informations */
     NETWORK: { NAME: "Rinkeby", SYMBOL: "ETH", ID: 4 },
-    /** The recommended gas limit for the transaction, in wei */
-    GAS_LIMIT: 3_000_000,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
