@@ -45,7 +45,7 @@
 </script>
 
 <svelte:head>
-    <title>{id}</title>
+    <title>{symbol} #{id} | TOT</title>
 </svelte:head>
 
 {#if loaded}

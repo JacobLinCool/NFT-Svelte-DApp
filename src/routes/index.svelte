@@ -13,8 +13,10 @@
     $: min = 1;
     $: total_supply = 1;
     $: cost = BigInt(-1);
-    let count = 1;
     $: connection = get.connection();
+    $: minting = false;
+    $: message = "";
+    let count = 1;
     if (!get.readonly_contract()) {
         set_update(async (c) => {
             connection = c;
@@ -38,13 +40,27 @@
         total_supply = parseInt(await get.readonly_contract().TOTAL_SUPPLY());
         cost = BigInt(await get.readonly_contract().TOKEN_COST());
         loaded = true;
-        console.log(connection, get);
     }
 
     async function mint() {
         if (connection.enabled) {
+            minting = true;
             const contract = get.contract();
-            await contract.mint(count, { value: cost * BigInt(count) });
+            try {
+                message = `Minting.`;
+                const tx = await contract.mint(count, { value: cost * BigInt(count) });
+                message = `Confirming... <a href="https://rinkeby.etherscan.io/tx/${tx.hash}" target="_blank">Transaction: ${tx.hash}</a>`;
+                const minted = await tx.wait();
+                const tokens: number[] = minted.events.map((evt) => parseInt(evt.args.tokenId._hex));
+                message = `Minted ${tokens.length} TOT${tokens.length > 1 ? "s" : ""}: ${tokens
+                    .map((token) => `<a href="/library/${token}" target="_blank">#${token}</a>`)
+                    .join(", ")}`;
+            } catch (err) {
+                console.log(err);
+                message = `<span class="text-red-500">Error: ${err.message}</span>`;
+            } finally {
+                minting = false;
+            }
         } else {
             await enable();
         }
@@ -52,7 +68,7 @@
 </script>
 
 <svelte:head>
-    <title>Home</title>
+    <title>Home | TOT</title>
 </svelte:head>
 
 <PageTransi>
@@ -86,16 +102,20 @@
         <button
             on:click={mint}
             class="h-16 w-36 rounded-lg border border-indigo-600 text-xl text-indigo-600 transition-all hover:text-4xl hover:shadow-lg disabled:opacity-50 disabled:grayscale-[0.5]"
-            disabled={!loaded}
+            disabled={!loaded || minting}
         >
-            {loaded ? (connection.enabled ? "Mint" : "Enable") : "Loading"}
+            {loaded ? (connection.enabled ? (minting ? "Minting" : "Mint") : "Enable") : "Loading"}
         </button>
 
         {#if connection.error}
             <p class="m-4 text-center text-red-500">{connection.error}</p>
         {:else}
-            <p class="m-4 text-green-500 text-center">
-                Meet {count} of {total_supply} TOT{count > 1 ? "s" : ""} in the world!
+            <p class="m-4 text-green-500 text-center {minting ? 'animate-pulse' : ''}">
+                {#if message}
+                    {@html message}
+                {:else}
+                    Meet {count} of {total_supply} TOT{count > 1 ? "s" : ""} in the world!
+                {/if}
             </p>
         {/if}
     </section>
