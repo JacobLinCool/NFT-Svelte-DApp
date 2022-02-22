@@ -1,17 +1,23 @@
 <script context="module" lang="ts">
-    export const prerender = true;
+    import { browser } from "$app/env";
+    import { init, enable, set_update, get } from "../contract";
+
+    async function initialize() {
+        if (browser) {
+            await init();
+        }
+    }
 </script>
 
 <script lang="ts">
-    import { browser } from "$app/env";
     import Count from "$lib/Count.svelte";
     import PageTransi from "$lib/PageTransi.svelte";
-    import { init, enable, set_update, get } from "../contract";
 
     $: loaded = false;
     $: max = 1;
     $: min = 1;
     $: total_supply = 1;
+    $: already_minted = 0;
     $: cost = BigInt(-1);
     $: connection = get.connection();
     $: minting = false;
@@ -29,15 +35,10 @@
         update();
     }
 
-    async function initialize() {
-        if (browser) {
-            await init();
-        }
-    }
-
     async function update() {
         max = parseInt(await get.readonly_contract().ONCE_MINT_MAX());
         total_supply = parseInt(await get.readonly_contract().TOTAL_SUPPLY());
+        already_minted = parseInt(await get.readonly_contract().totalSupply());
         cost = BigInt(await get.readonly_contract().TOKEN_COST());
         loaded = true;
     }
@@ -114,7 +115,9 @@
                 {#if message}
                     {@html message}
                 {:else}
-                    Meet {count} of {total_supply} TOT{count > 1 ? "s" : ""} in the world!
+                    Find {count} of {total_supply - already_minted} missing TOT{total_supply - already_minted > 1
+                        ? "s"
+                        : ""}!
                 {/if}
             </p>
         {/if}
