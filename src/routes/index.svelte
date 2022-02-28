@@ -15,6 +15,7 @@
     let contract: Contract;
     let count = 1;
     let connection_error = "Initializing...";
+    let connected = false;
 
     if (browser) {
         init();
@@ -25,29 +26,43 @@
 
         contract = c;
 
-        if (contract.ethereum) {
+        if (c.ethereum) {
             // @ts-ignore
-            if (parseInt(contract.ethereum.chainId) !== contract.network) {
-                connection_error = "Wrong Network. Please switch the network ID to " + contract.network;
+            if (parseInt(c.ethereum.chainId) !== c.network) {
+                connection_error = "Wrong Network. Please switch the network ID to " + c.network;
             }
             connection_error = "";
+        } else {
+            connection_error = "No Ethereum connection found. Please install Metamask.";
         }
 
-        max = parseInt(await contract.contract.ONCE_MINT_MAX());
-        total_supply = parseInt(await contract.contract.TOTAL_SUPPLY());
-        already_minted = parseInt(await contract.contract.totalSupply());
-        cost = BigInt(await contract.contract.TOKEN_COST());
+        max = parseInt(await c.contract.ONCE_MINT_MAX());
+        total_supply = parseInt(await c.contract.TOTAL_SUPPLY());
+        already_minted = parseInt(await c.contract.totalSupply());
+        cost = BigInt(await c.contract.TOKEN_COST());
         loaded = true;
+
+        // @ts-ignore
+        c.ethereum.on("chainChanged", async () => {
+            // @ts-ignore
+            if (parseInt(c.ethereum.chainId) !== c.network) {
+                connection_error = "Wrong Network. Please switch the network ID to " + c.network;
+            } else {
+                connection_error = "";
+            }
+        });
     }
 
     async function mint() {
         if (contract.status) {
             minting = true;
             const c = contract.contract;
+            let hash = "";
             try {
                 message = `Minting.`;
                 const tx = await c.mint(count, { value: cost * BigInt(count) });
-                message = `Confirming... <a href="https://rinkeby.etherscan.io/tx/${tx.hash}" target="_blank">Transaction: ${tx.hash}</a>`;
+                hash = tx.hash;
+                message = `Confirming... <br /><a href="https://rinkeby.etherscan.io/tx/${hash}" target="_blank">Transaction: ${hash}</a>`;
                 const minted = await tx.wait();
                 const tokens: number[] = minted.events.map((evt) => parseInt(evt.args.tokenId._hex));
                 message = `Minted ${tokens.length} TOT${tokens.length > 1 ? "s" : ""}: ${tokens
@@ -55,12 +70,13 @@
                     .join(", ")}`;
             } catch (err) {
                 console.log(err);
-                message = `<span class="text-red-500">Error: ${err.message}</span>`;
+                message = `<span class="text-red-500">Error: Transaction Failed. <br />See <a href="https://rinkeby.etherscan.io/tx/${hash}" target="_blank">${hash}</a></span>`;
             } finally {
                 minting = false;
             }
         } else {
             await contract.connect();
+            connected = true;
         }
     }
 </script>
@@ -102,7 +118,7 @@
             class="h-16 w-36 rounded-lg border border-indigo-600 text-xl text-indigo-600 transition-all hover:text-4xl hover:shadow-lg disabled:opacity-50 disabled:grayscale-[0.5]"
             disabled={!loaded || minting}
         >
-            {loaded ? (contract.status ? (minting ? "Minting" : "Mint") : "Enable") : "Loading"}
+            {loaded ? (contract.status || connected ? (minting ? "Minting" : "Mint") : "Enable") : "Loading"}
         </button>
 
         {#if connection_error}
@@ -112,7 +128,7 @@
                 {#if message}
                     {@html message}
                 {:else}
-                    Find {count} of {total_supply - already_minted} missing TOT{total_supply - already_minted > 1
+                    Mint {count} of {total_supply - already_minted} wild TOT{total_supply - already_minted > 1
                         ? "s"
                         : ""}!
                 {/if}
