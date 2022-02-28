@@ -1,3 +1,4 @@
+/** The smart contract ABI */
 export default [
     {
         inputs: [],

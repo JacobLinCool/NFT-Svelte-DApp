@@ -6,36 +6,26 @@
     import { page } from "$app/stores";
     import { browser } from "$app/env";
     import PageTransi from "$lib/PageTransi.svelte";
-    import { config, init, set_update, get } from "../../contract";
 
     const id = $page.params.id;
-
     const base_url = "https://cloudflare-ipfs.com/ipfs/bafybeiavxdez2mrt76thy4ij4eddozq6aqkme5f3sc2vcqv7766osubste/";
-    $: loaded = false;
-    $: symbol = "";
-    $: owned = false;
-    $: opensea = `https://testnets.opensea.io/assets/${config.ADDRESS}/${id}`;
-    if (!get.readonly_contract()) {
-        set_update(async () => {
-            if (get.readonly_contract()) {
-                update();
-            }
-        });
-        initialize();
-    } else {
-        update();
+    let loaded = false;
+    let symbol = "";
+    let owned = false;
+    let opensea = `https://testnets.opensea.io/assets/`;
+
+    if (browser) {
+        init();
     }
 
-    async function initialize() {
-        if (browser) {
-            await init();
-        }
-    }
+    async function init() {
+        const { default: contract, config } = await import("../../contract");
 
-    async function update() {
-        symbol = await get.readonly_contract().TOKEN_SYMBOL();
+        opensea = `https://testnets.opensea.io/assets/${config.ADDRESS}/${id}`;
+
+        symbol = await contract.contract.TOKEN_SYMBOL();
         try {
-            const uri = await get.readonly_contract().tokenURI(id);
+            const uri = await contract.contract.tokenURI(id);
             owned = !!uri;
         } catch (e) {
             owned = false;

@@ -1,90 +1,12 @@
+import Contract from "dapp-contract";
 import { ethers } from "ethers";
 import abi from "./abi";
 
 export const config = {
     /** The smart contract address */
     ADDRESS: "0x3D0b2d43Bc4249357b54ca917BE56D5ABf04d1C0",
-    /** The blockchain Network Informations */
-    NETWORK: { NAME: "Rinkeby", SYMBOL: "ETH", ID: 4 },
+    /** The blockchain Network ID */
+    NETWORK: 4,
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let ethereum: any = null;
-let connection = { connected: false, enabled: false, error: "Not Initialized" };
-let readonly_contract: ethers.Contract = null;
-let contract: ethers.Contract = null;
-let update = (c: typeof connection) => console.log(c);
-export function set_update(func: (c: typeof connection) => void) {
-    update = func;
-}
-export const get = {
-    ethereum: () => ethereum,
-    connection: () => connection,
-    contract: () => contract,
-    readonly_contract: () => readonly_contract,
-};
-
-let initialized = false;
-export async function init(): Promise<void> {
-    if (typeof window === undefined || initialized) {
-        return;
-    }
-    initialized = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ethereum = (window as any).ethereum;
-    listen_ethereum();
-
-    const provider = new ethers.providers.Web3Provider(ethereum);
-    const signer = provider.getSigner();
-    readonly_contract = new ethers.Contract(config.ADDRESS, abi, provider);
-    contract = new ethers.Contract(config.ADDRESS, abi, signer);
-
-    await refresh();
-}
-
-async function refresh(): Promise<void> {
-    if (!ethereum) {
-        connection = { connected: false, enabled: connection.enabled, error: "Not Initialized" };
-        return;
-    }
-
-    const provider = new ethers.providers.Web3Provider(ethereum);
-    const network = await provider.detectNetwork();
-    if (network.chainId !== config.NETWORK.ID) {
-        connection = {
-            connected: false,
-            enabled: connection.enabled,
-            error: `Wrong Network. Current: 0x${network.chainId.toString(16)}. Expected: 0x${config.NETWORK.ID.toString(
-                16,
-            )}.`,
-        };
-        return;
-    }
-
-    connection = {
-        connected: true,
-        enabled: connection.enabled,
-        error: connection.enabled ? "" : "Please Enable the Wallets.",
-    };
-    update(connection);
-}
-
-export async function enable(): Promise<void> {
-    if (!connection.connected || connection.enabled) {
-        return;
-    }
-
-    await ethereum.request({ method: "eth_requestAccounts" });
-    connection.enabled = true;
-    connection.error = "";
-    refresh();
-}
-
-function listen_ethereum() {
-    if (ethereum) {
-        ethereum.on("connect", refresh);
-        ethereum.on("disconnect", refresh);
-        ethereum.on("chainChanged", refresh);
-        ethereum.on("accountsChanged", refresh);
-    }
-}
+export default new Contract(config.ADDRESS, config.NETWORK, abi, new ethers.providers.InfuraProvider(config.NETWORK));

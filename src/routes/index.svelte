@@ -1,15 +1,6 @@
-<script context="module" lang="ts">
-    import { browser } from "$app/env";
-    import { init, enable, set_update, get } from "../contract";
-
-    async function initialize() {
-        if (browser) {
-            await init();
-        }
-    }
-</script>
-
 <script lang="ts">
+    import type { Contract } from "dapp-contract";
+    import { browser } from "$app/env";
     import Count from "$lib/Count.svelte";
     import PageTransi from "$lib/PageTransi.svelte";
 
@@ -19,37 +10,43 @@
     $: total_supply = 1;
     $: already_minted = 0;
     $: cost = BigInt(-1);
-    $: connection = get.connection();
     $: minting = false;
     $: message = "";
+    let contract: Contract;
     let count = 1;
-    if (!get.readonly_contract()) {
-        set_update(async (c) => {
-            connection = c;
-            if (get.readonly_contract()) {
-                update();
-            }
-        });
-        initialize();
-    } else {
-        update();
+    let connection_error = "Initializing...";
+
+    if (browser) {
+        init();
     }
 
-    async function update() {
-        max = parseInt(await get.readonly_contract().ONCE_MINT_MAX());
-        total_supply = parseInt(await get.readonly_contract().TOTAL_SUPPLY());
-        already_minted = parseInt(await get.readonly_contract().totalSupply());
-        cost = BigInt(await get.readonly_contract().TOKEN_COST());
+    async function init() {
+        const { default: c } = await import("../contract");
+
+        contract = c;
+
+        if (contract.ethereum) {
+            // @ts-ignore
+            if (parseInt(contract.ethereum.chainId) !== contract.network) {
+                connection_error = "Wrong Network. Please switch the network ID to " + contract.network;
+            }
+            connection_error = "";
+        }
+
+        max = parseInt(await contract.contract.ONCE_MINT_MAX());
+        total_supply = parseInt(await contract.contract.TOTAL_SUPPLY());
+        already_minted = parseInt(await contract.contract.totalSupply());
+        cost = BigInt(await contract.contract.TOKEN_COST());
         loaded = true;
     }
 
     async function mint() {
-        if (connection.enabled) {
+        if (contract.status) {
             minting = true;
-            const contract = get.contract();
+            const c = contract.contract;
             try {
                 message = `Minting.`;
-                const tx = await contract.mint(count, { value: cost * BigInt(count) });
+                const tx = await c.mint(count, { value: cost * BigInt(count) });
                 message = `Confirming... <a href="https://rinkeby.etherscan.io/tx/${tx.hash}" target="_blank">Transaction: ${tx.hash}</a>`;
                 const minted = await tx.wait();
                 const tokens: number[] = minted.events.map((evt) => parseInt(evt.args.tokenId._hex));
@@ -63,7 +60,7 @@
                 minting = false;
             }
         } else {
-            await enable();
+            await contract.connect();
         }
     }
 </script>
@@ -105,11 +102,11 @@
             class="h-16 w-36 rounded-lg border border-indigo-600 text-xl text-indigo-600 transition-all hover:text-4xl hover:shadow-lg disabled:opacity-50 disabled:grayscale-[0.5]"
             disabled={!loaded || minting}
         >
-            {loaded ? (connection.enabled ? (minting ? "Minting" : "Mint") : "Enable") : "Loading"}
+            {loaded ? (contract.status ? (minting ? "Minting" : "Mint") : "Enable") : "Loading"}
         </button>
 
-        {#if connection.error}
-            <p class="m-4 text-center text-red-500">{connection.error}</p>
+        {#if connection_error}
+            <p class="m-4 text-center text-red-500">{connection_error}</p>
         {:else}
             <p class="m-4 text-green-500 text-center {minting ? 'animate-pulse' : ''}">
                 {#if message}

@@ -1,13 +1,3 @@
-<script lang="ts" context="module">
-    import { init, set_update, get } from "../../contract";
-
-    async function initialize() {
-        if (browser) {
-            await init();
-        }
-    }
-</script>
-
 <script lang="ts">
     import { browser } from "$app/env";
     import PageTransi from "$lib/PageTransi.svelte";
@@ -17,23 +7,19 @@
     $: safed = false;
     $: symbol = "";
     $: total = 3000;
-    if (!get.readonly_contract()) {
-        set_update(async () => {
-            if (get.readonly_contract()) {
-                update();
-            }
-        });
-        initialize();
-    } else {
-        update();
+
+    if (browser) {
+        init();
     }
 
-    async function update() {
-        symbol = await get.readonly_contract().TOKEN_SYMBOL();
-        total = parseInt(await get.readonly_contract().TOTAL_SUPPLY());
+    async function init() {
+        const { default: contract } = await import("../../contract");
+        symbol = await contract.contract.TOKEN_SYMBOL();
+        total = parseInt(await contract.contract.TOTAL_SUPPLY());
         loaded = true;
         safed = true;
     }
+
     setTimeout(() => (loaded = false), 50);
 </script>
 
